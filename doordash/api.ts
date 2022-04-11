@@ -5,7 +5,7 @@ import { AxiosResponse } from "axios";
 const { v4: uuidv4 } = require('uuid');
 const { getJWT } = require('../get-jwt');
 import libBurgApi from "../libertyburger/api";
-import { CompletedOrderResponse } from '../libertyburger/types';
+import { CompletedOrderResponse } from '../libertyburger/types/ordering';
 import { CreateDeliveryBody, CreateDeliveryResponse, DeliveryQuoteBody, DeliveryQuoteResponse, DeliveryStatusResponse } from '../doordash/types';
 
 const getHeaders = () => ({
