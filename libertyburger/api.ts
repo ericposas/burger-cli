@@ -16,7 +16,7 @@ const endpoint = 'https://ws-api.toasttab.com/consumer-app-bff/v1/graphql';
 type LibertyBurgerAPI = () => ({
     getDiningOptions: (restaurantGuid: string) => Promise<DiningOptionsResponseFlattened>,
     getRestaurantData: (restaurantGuid: string) => Promise<RestaurantDataResponseFlattened>,
-    getMenus: (restaurantGuid: string) => Promise<MenusV3>,
+    getMenus: (restaurantGuid: string, shortUrl: string) => Promise<MenusV3>,
     getMenuOf: (menuType: string) => Promise<Item[]>,
     getAvailability: (restaurantGuid: string) => Promise<string>,
     addItemToCart: (restaurantGuid: string, selection: CartSelection, cartGuid?: string) => Promise<AddItemResponseFlattened>,
@@ -75,14 +75,14 @@ const api = <LibertyBurgerAPI>(() => ({
         }
     },
     
-    getMenus: async (restaurantGuid: string): Promise<MenusV3> => {
+    getMenus: async (restaurantGuid: string, shortUrl: string): Promise<MenusV3> => {
         try {
             const body = [
                 {
                     operationName: "MENUS",
                     variables: {
                         input: {
-                            shortUrl: "liberty-burger-lakewood",
+                            shortUrl,
                             restaurantGuid,
                             menuApi: "DO"
                         }
@@ -100,7 +100,7 @@ const api = <LibertyBurgerAPI>(() => ({
 
     getMenuOf: async (menuType: MenuOf): Promise<Item[]> => {
 		try {
-			const menus: MenusV3 = await api().getMenus(`${process.env.restaurantGuid}`);
+			const menus: MenusV3 = await api().getMenus(`${process.env.restaurantGuid}`, `${process.env.restaurantGuid}`);
 			const menuItems: Item[] = menus.menus[0].groups[
 				menuType === 'burgers'
 					? 0

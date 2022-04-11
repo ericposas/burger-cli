@@ -44,7 +44,7 @@ const mapToCartSelection = (items: Item[]): CartSelection[] => {
 const allItemsAsCartReadySelections = async (): Promise<CartSelection[]> => {
 	try {
 		let items: Item[] = [];
-		const allMenus: MenusV3 = await api().getMenus(restGuid);
+		const allMenus: MenusV3 = await api().getMenus(restGuid, 'liberty-burger-lakewood');
 		allMenus.menus.forEach((menu, idx) => {
 			menu.groups.forEach(group => {
 				items = items.concat(
@@ -110,11 +110,18 @@ const allItemsAsCartReadySelections = async (): Promise<CartSelection[]> => {
 	// 	)
 	// );
 
+	// console.log(await allItemsAsCartReadySelections())
+	console.log(
+		(await api().getMenus('7bc22532-da83-4f10-b461-4f146bc165e2', "zalat-z7")).menus[0].groups.forEach(group => {
+			console.log(group);
+		})
+	);
+
 	// const burgs: CartSelection[] = mapToCartSelection(await api().getMenuOf('burgers'));
 	// const sauces: CartSelection[] = mapToCartSelection(await api().getMenuOf('sauces'));
 	// const mappedDrinks: CartSelection[] = mapToCartSelection(drinks);
-	const drinks = await api().getMenuOf('sides');
-	console.log(drinks);
+	// const drinks = await api().getMenuOf('sides');
+	// console.log(drinks);
 
 	// const _1st: AddItemResponseFlattened = await api().addItemToCart(restGuid, burgs[1]);
 	// const _2nd: AddItemResponseFlattened = await api().addItemToCart(restGuid, burgs[4], _1st.cart.guid); // pass cart guid from _1st add here to keep all items in cart for checkout
@@ -131,10 +138,10 @@ const allItemsAsCartReadySelections = async (): Promise<CartSelection[]> => {
 	// );
 
 	// let's lookup a cart we created 10 to 15 min. ago..
-	const cart: GetCartResponseFlattened = await api().getCart("4b36a97c-d524-4925-82b6-b70a54531c6a");
-	console.log(
-		cart.cart.order.selections
-	);
+	// const cart: GetCartResponseFlattened = await api().getCart("4b36a97c-d524-4925-82b6-b70a54531c6a");
+	// console.log(
+	// 	cart.cart.order.selections
+	// );
 	
 	// Steps:
 	
