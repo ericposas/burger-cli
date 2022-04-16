@@ -3,7 +3,7 @@ require('dotenv').config();
 import moment from 'moment';
 import api from './libertyburger/api';
 import { DiningOptionsResponse, Item, MenuOf, MenusV3, RestaurantDataResponse } from './libertyburger/types/menu';
-import { AddItemResponse, AddItemResponseFlattened, CartSelection, CompletedOrderResponse, CompletedOrderResponseFlattened, GetCartResponse, GetCartResponseFlattened, ModifierGroup, ValidateCartResponse, ValidateCartResponseFlattened } from './libertyburger/types/ordering';
+import { AddItemResponse, AddItemResponseFlattened, CartSelection, CompletedOrderResponse, CompletedOrderResponseFlattened, GetCartResponse, GetCartResponseFlattened, ModifierGroup, PlaceCCOrderResponseFlattened, ValidateCartResponse, ValidateCartResponseFlattened } from './libertyburger/types/ordering';
 
 const readline = require('readline');
 const rl = readline.createInterface({
@@ -260,7 +260,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 			const validate: ValidateCartResponseFlattened = await api().validateCart(cart.cart.guid);
 			// place order here 
 			console.log('placing order...');
-			await api().placeCCOrder(
+			const placeOrder: PlaceCCOrderResponseFlattened = await api().placeCCOrder(
 				validate.cart.guid,
 				1.99,
 				{
@@ -276,7 +276,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 					encryptionKeyId: `${process.env.encryptionKeyId}`,
 					expMonth: `${process.env.expMonth}`,
 					expYear: `${process.env.expYear}`,
-					saveCard: <unknown>process.env.saveCard as boolean,
+					saveCard: false,
 					zipCode: `${process.env.zipCode}`
 				}
 			);
@@ -288,6 +288,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 			// expYear
 			// saveCard
 			// zipCode
+			console.log('Order successfully placed!', placeOrder.completedOrder);
 		} catch (err) {
 			console.error(err);
 		}

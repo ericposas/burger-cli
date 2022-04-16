@@ -258,26 +258,7 @@ const api = <LibertyBurgerAPI>(() => ({
         }
     },
     
-    placeCCOrder: async (
-            cartGuid: string,
-            tipAmount: number,
-            customer: CustomerInfo = {
-                email: `${process.env.email}`,
-                firstName: `${process.env.firstName}`,
-                lastName: `${process.env.lastName}`,
-                phone: `${process.env.phone}`
-            },
-            cardInfo: CCardInfo = {
-                cardFirst6: `${process.env.cardFirst6}`,
-                cardLast4: `${process.env.cardLast4}`,
-                encryptedCardDataString: `${process.env.encryptoedCardDataString}`,
-                encryptionKeyId: `${process.env.encryptionKeyId}`,
-                expMonth: `${process.env.expMonth}`,
-                expYear: `${process.env.expYear}`,
-                saveCard: Boolean(process.env.saveCard),
-                zipCode: `${process.env.zipCode}`
-            }
-        ): Promise<PlaceCCOrderResponseFlattened> => {
+    placeCCOrder: async (cartGuid: string, tipAmount: number, customer: CustomerInfo, cardInfo: CCardInfo): Promise<PlaceCCOrderResponseFlattened> => {
         try {
             const body = [
                 {
@@ -298,6 +279,12 @@ const api = <LibertyBurgerAPI>(() => ({
                 }
             ];
             const result:AxiosResponse<PlaceCCOrderResponse> = await axios.post(endpoint, body, headers);
+            if (!result.data[0].data.placeCcOrder) {
+                console.log(
+                    'error occurred',
+                    result.data[0]
+                );
+            }
             return Promise.resolve(result.data[0].data.placeCcOrder);
         } catch (err) {
             console.error(err);
