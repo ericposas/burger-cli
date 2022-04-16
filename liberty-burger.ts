@@ -1,16 +1,21 @@
 require('dotenv').config();
 
-import { group } from 'console';
 import moment from 'moment';
 import api from './libertyburger/api';
 import { DiningOptionsResponse, Item, MenuOf, MenusV3, RestaurantDataResponse } from './libertyburger/types/menu';
 import { AddItemResponse, AddItemResponseFlattened, CartSelection, CompletedOrderResponse, CompletedOrderResponseFlattened, GetCartResponse, GetCartResponseFlattened, ValidateCartResponse, ValidateCartResponseFlattened } from './libertyburger/types/ordering';
 
+const readline = require('readline');
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
 const term = require('terminal-kit').terminal;
 const currency = require('currency.js');
 const imgPx = 25;
 
-const restGuid = `${process.env.restaurantGuid}`;
+const restaurantGuid = `${process.env.restaurantGuid}`;
+const shortUrl = `${process.env.shortUrl}`;
 
 const getPinkModifier = (groupGuidCheck: string) => {
 	if (groupGuidCheck === "ccefc41e-76f5-42a1-ab7d-58190ece0d83") { // <-- if item is a burger, checking here against 'Burger' group guid..
@@ -28,23 +33,35 @@ const getPinkModifier = (groupGuidCheck: string) => {
 	}
 };
 
-const mapToCartSelection = (items: Item[]): CartSelection[] => {
-	return items.map(item => {
-		return <CartSelection>{
-			itemGuid: item.guid,
-			itemGroupGuid: item.itemGroupGuid,
-			itemMasterId: item.masterId,
-			modifierGroups: getPinkModifier(item.itemGroupGuid) ? [getPinkModifier(item.itemGroupGuid)] : [],
-			quantity: 1,
-			specialInstructions: ""
-		};
+type ItemInfo = { name: string; price: number, stock: boolean, image: string };
+const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] => {
+	return items.map((item, idx) => {
+		// returns an array of [index (choice #), ItemInfo, CartSelection] tuples
+		return [
+			idx,
+			<ItemInfo>{
+				name: item.name,
+				price: item.price,
+				stock: item.outOfStock,
+				image: item.imageUrl,
+			},
+			<CartSelection>{
+				itemGuid: item.guid,
+				itemGroupGuid: item.itemGroupGuid,
+				itemMasterId: item.masterId,
+				modifierGroups: getPinkModifier(item.itemGroupGuid) ? [getPinkModifier(item.itemGroupGuid)] : [],
+				quantity: 1,
+				specialInstructions: ""
+			}
+		];
 	});
 };
 
-const allItemsAsCartReadySelections = async (): Promise<CartSelection[]> => {
+// now we'll have to pass in the restaurantGuid and shortUrl for the restaurant menu that we want
+const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: string): Promise<[number, ItemInfo, CartSelection][]> => {
 	try {
 		let items: Item[] = [];
-		const allMenus: MenusV3 = await api().getMenus(restGuid, 'liberty-burger-lakewood');
+		const allMenus: MenusV3 = await api().getMenus(_restGuid, _shortUrl);
 		allMenus.menus.forEach((menu, idx) => {
 			menu.groups.forEach(group => {
 				items = items.concat(
@@ -110,12 +127,52 @@ const allItemsAsCartReadySelections = async (): Promise<CartSelection[]> => {
 	// 	)
 	// );
 
-	// console.log(await allItemsAsCartReadySelections())
-	console.log(
-		(await api().getMenus('7bc22532-da83-4f10-b461-4f146bc165e2', "zalat-z7")).menus[0].groups.forEach(group => {
-			console.log(group);
-		})
-	);
+	const restaurant = await api().getRestaurantData(restaurantGuid);	
+	// check restaurant availability before proceeding
+	const isAvail: string | boolean = await api().getAvailability(restaurantGuid);
+	// console.log(isAvail);
+
+	if (typeof isAvail === 'boolean' && isAvail === false) {
+		console.log(`Sorry, ${restaurant.whiteLabelName} is not open for orders right now.`);
+		process.exit();
+	}
+
+	const items = mapToCartSelection(await api().getMenuOf('burgers'));
+	items.forEach(item => {
+		console.log(
+			`#${item[0]}`,
+			item[1].name,
+			`$${item[1].price}`
+		);
+	});
+	
+	let cartGuid: string;
+
+	rl.question(`What would you like to order from ${restaurant.whiteLabelName}?\n`, async (input: number) => {
+		console.log(`\nYou selected item ${input.toString()}, ${items[input][1].name}, price: $${items[input][1].price}\n`);
+		const add: AddItemResponseFlattened = await api().addItemToCart(restaurantGuid, items[input][2]); // this first item will create a cartGuid that we can reference in the next item add operation
+		console.log(add);
+		next();
+	});
+
+	async function next() {
+
+		// const cart: GetCartResponseFlattened = await api().getCart(cartGuid);
+		// console.log(
+		// 	'Here is your current cart: ',
+		// 	cart.cart.order.selections
+		// );
+
+		// rl.question('Where do you live ? ', (country: string) => {
+		// 	console.log(`You is a citizen of ${country}`);
+		// 	rl.close();
+		// });
+	}
+
+	rl.on('close', function () {
+		console.log('\nBYE BYE !!!');
+		process.exit(0);
+	});
 
 	// const burgs: CartSelection[] = mapToCartSelection(await api().getMenuOf('burgers'));
 	// const sauces: CartSelection[] = mapToCartSelection(await api().getMenuOf('sauces'));

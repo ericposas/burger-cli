@@ -130,7 +130,7 @@ const api = <LibertyBurgerAPI>(() => ({
 		}
 	},
     
-    getAvailability: async (restaurantGuid: string): Promise<string> => {
+    getAvailability: async (restaurantGuid: string): Promise<string | boolean> => {
         try {
             const result: DiningOptionsResponseFlattened = await api().getDiningOptions(restaurantGuid);
             const availAt = result[0].asapSchedule.availableAt;
@@ -138,7 +138,7 @@ const api = <LibertyBurgerAPI>(() => ({
                 const formatted = moment(availAt).format("dddd, MMMM Do YYYY, h:mm:ss a");
                 return Promise.resolve(formatted);
             } else {
-                return Promise.resolve(`availableNow? ${result[0].asapSchedule.availableNow}`);
+                return Promise.resolve(result[0].asapSchedule.availableNow);
             }
         } catch (err) {
             console.error(err);
@@ -171,6 +171,27 @@ const api = <LibertyBurgerAPI>(() => ({
             ];
             const addItem: AxiosResponse<AddItemResponse> = await axios.post(endpoint, body, headers);
             return Promise.resolve(addItem.data[0].data.addItemToCartV2);
+        } catch (err) {
+            console.error(err);
+            return Promise.reject(err);
+        }
+    },
+
+    removeItemFromCart: async (cartGuid: string, selectionGuid: string) => {
+        try {
+            const body = [
+                {
+                    operationName: "DELETE_ITEM_FROM_CART",
+                    query: "mutation DELETE_ITEM_FROM_CART($input: DeleteItemFromCartInput!) {\n  deleteItemFromCartV2(input: $input) {\n    ... on CartResponse {\n      ...cartResponse\n      __typename\n    }\n    ... on CartModificationError {\n      code\n      message\n      __typename\n    }\n    ... on CartOutOfStockError {\n      cart {\n        ...cart\n        __typename\n      }\n      message\n      items {\n        name\n        guid\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment cartResponse on CartResponse {\n  cart {\n    ...cart\n    __typename\n  }\n  warnings {\n    code\n    message\n    __typename\n  }\n  info {\n    code\n    message\n    __typename\n  }\n  __typename\n}\n\nfragment cart on Cart {\n  guid\n  order {\n    deliveryInfo {\n      address1\n      address2\n      city\n      state\n      zipCode\n      latitude\n      longitude\n      notes\n      __typename\n    }\n    numberOfSelections\n    selections {\n      guid\n      groupingKey\n      itemGuid\n      itemGroupGuid\n      name\n      preDiscountPrice\n      price\n      quantity\n      usesFractionalQuantity\n      fractionalQuantity {\n        unitOfMeasure\n        quantity\n        __typename\n      }\n      modifiers {\n        guid\n        name\n        price\n        groupingKey\n        modifiers {\n          guid\n          name\n          price\n          groupingKey\n          modifiers {\n            guid\n            name\n            price\n            groupingKey\n            modifiers {\n              guid\n              name\n              price\n              groupingKey\n              modifiers {\n                guid\n                name\n                price\n                groupingKey\n                modifiers {\n                  guid\n                  name\n                  price\n                  groupingKey\n                  modifiers {\n                    guid\n                    name\n                    price\n                    groupingKey\n                    modifiers {\n                      guid\n                      name\n                      price\n                      groupingKey\n                      modifiers {\n                        guid\n                        name\n                        price\n                        groupingKey\n                        modifiers {\n                          guid\n                          name\n                          price\n                          groupingKey\n                          __typename\n                        }\n                        __typename\n                      }\n                      __typename\n                    }\n                    __typename\n                  }\n                  __typename\n                }\n                __typename\n              }\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    discounts {\n      restaurantDiscount {\n        guid\n        name\n        amount\n        promoCode\n        __typename\n      }\n      loyaltyDiscount {\n        guid\n        amount\n        __typename\n      }\n      loyaltyDiscounts {\n        type\n        amount\n        guid\n        __typename\n      }\n      globalReward {\n        amount\n        name\n        rewardType\n        total\n        __typename\n      }\n      __typename\n    }\n    discountsTotal\n    deliveryChargeTotal\n    serviceChargeTotal\n    subtotal\n    tax\n    total\n    __typename\n  }\n  quoteTime\n  paymentOptions {\n    atCheckout {\n      paymentType\n      __typename\n    }\n    uponReceipt {\n      paymentType\n      __typename\n    }\n    __typename\n  }\n  preComputedTips {\n    percent\n    value\n    __typename\n  }\n  approvalRules {\n    ruleType\n    requiredAdjustment\n    thresholdAmount\n    __typename\n  }\n  diningOptionBehavior\n  fulfillmentType\n  fulfillmentDateTime\n  takeoutQuoteTime\n  deliveryQuoteTime\n  deliveryProviderInfo {\n    provider\n    needsDeliveryCommunicationConsent\n    __typename\n  }\n  cartUpsellInfo {\n    upsellItems\n    __typename\n  }\n  __typename\n}\n",
+                    variables: {
+                        input: {
+                            cartGuid,
+                            selectionGuid, // sectionGuid is order.selections[n].guid, returned from getCart or after adding an item, looks like the following: "ONLINEORDERING:a6a070be-96bd-4ed7-b3b2-7e0874af409a"
+                        }
+                    }
+                }
+            ];
+            const deleteItem: AxiosResponse<any> = await axios.post(endpoint, body, headers);
         } catch (err) {
             console.error(err);
             return Promise.reject(err);
