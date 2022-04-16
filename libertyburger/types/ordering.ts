@@ -125,6 +125,72 @@ export type AddItemResponse = {
 
 export type AddItemResponseFlattened = AddItemResponse[0]['data']['addItemToCartV2'];
 
+export type DeleteItemFromCartResponse = {
+	[index: number]: {
+		data: {
+			deleteItemFromCartV2: {
+				cart: {
+					guid: string,
+					order: {
+						deliveryInfo: null,
+						numberOfSelections: number,
+						selections: any[],
+						discounts: {
+							restaurantDiscount: null,
+							loyaltyDiscount: null,
+							loyaltyDiscounts: any[],
+							globalReward: null,
+							__typename: string
+						},
+						discountsTotal: number,
+						deliveryChargeTotal: number,
+						serviceChargeTotal: number,
+						subtotal: null,
+						tax: number,
+						total: number,
+						__typename: string
+					},
+					quoteTime: null,
+					paymentOptions: {
+						atCheckout: [
+							{
+								paymentType: string,
+								__typename: string
+							}
+						],
+						uponReceipt: any[],
+						__typename: string
+					},
+					preComputedTips: {
+						[index: number]: {
+							percent: number,
+							value: number,
+							__typename: string
+						}
+					},
+					approvalRules: any[],
+					diningOptionBehavior: string,
+					fulfillmentType: string,
+					fulfillmentDateTime: string,
+					takeoutQuoteTime: number,
+					deliveryQuoteTime: number,
+					deliveryProviderInfo: null,
+					cartUpsellInfo: {
+						upsellItems: [],
+						__typename: string
+					},
+					__typename: string
+				},
+				warnings: WarningMessage[],
+				info: any[],
+				__typename: string
+			}
+		}
+	}
+};
+
+export type DeleteItemFromCartResponseFlattened = DeleteItemFromCartResponse[0]['data']['deleteItemFromCartV2'];
+
 export type GetCartResponse = {
 	[index: number]: {
 		data: {

@@ -1,7 +1,7 @@
 import { AxiosResponse } from "axios";
 import {
 	CustomerInfo, CCardInfo, CartSelection,
-	AddItemResponse, GetCartResponse, ValidateCartResponse, PlaceCCOrderResponse, CompletedOrderResponse, AddItemResponseFlattened, GetCartResponseFlattened, ValidateCartResponseFlattened, PlaceCCOrderResponseFlattened, CompletedOrderResponseFlattened
+	AddItemResponse, GetCartResponse, ValidateCartResponse, PlaceCCOrderResponse, CompletedOrderResponse, AddItemResponseFlattened, GetCartResponseFlattened, ValidateCartResponseFlattened, PlaceCCOrderResponseFlattened, CompletedOrderResponseFlattened, DeleteItemFromCartResponseFlattened, DeleteItemFromCartResponse
 } from './types/ordering';
 import { Item, MenusV3, MenuOf, DiningOptionsResponse, RestaurantDataResponse, GetMenusResponse, DiningOptionsResponseFlattened, RestaurantDataResponseFlattened } from './types/menu';
 import { GET_COMPLETED_ORDER } from "./graphql/queries";
@@ -177,7 +177,7 @@ const api = <LibertyBurgerAPI>(() => ({
         }
     },
 
-    removeItemFromCart: async (cartGuid: string, selectionGuid: string) => {
+    removeItemFromCart: async (cartGuid: string, selectionGuid: string): Promise<DeleteItemFromCartResponseFlattened> => {
         try {
             const body = [
                 {
@@ -191,7 +191,8 @@ const api = <LibertyBurgerAPI>(() => ({
                     }
                 }
             ];
-            const deleteItem: AxiosResponse<any> = await axios.post(endpoint, body, headers);
+            const deleteItem: AxiosResponse<DeleteItemFromCartResponse> = await axios.post(endpoint, body, headers);
+            return Promise.resolve(deleteItem.data[0].data.deleteItemFromCartV2);
         } catch (err) {
             console.error(err);
             return Promise.reject(err);
