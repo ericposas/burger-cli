@@ -1,5 +1,5 @@
-export type RestaurantDataResponse = {
-	[index: number]: {
+export type RestaurantDataResponse = [
+	{
 		data: {
 			restaurantV2: {
 				guid: string,
@@ -75,12 +75,12 @@ export type RestaurantDataResponse = {
 			}
 		}
 	}
-};
+];
 
 export type RestaurantDataResponseFlattened = RestaurantDataResponse[0]['data']['restaurantV2'];
 
-export type DiningOptionsResponse = {
-	[index: number]: {
+export type DiningOptionsResponse = [
+	{
 		data: {
 			diningOptions: [
 				{
@@ -112,14 +112,14 @@ export type DiningOptionsResponse = {
 			]
 		}
 	}
-};
+];
 
 export type DiningOptionsResponseFlattened = DiningOptionsResponse[0]['data']['diningOptions'];
 
 export type PopularItems = {
 	popularItems: {
-		items: {
-			[index: number]: {
+		items: [
+			{
 				name: string,
 				guid: string,
 				itemGroupGuid: string,
@@ -127,7 +127,7 @@ export type PopularItems = {
 				price: number,
 				__typename: string
 			}
-		},
+		] ,
 		__typename: string
 	}
 };
@@ -167,13 +167,13 @@ export type MenusV3 = {
 	__typename: string
 };
 
-export type GetMenusResponse = {
-	[index: number]: {
+export type GetMenusResponse = [
+	{
 		data: {
 			menusV3: MenusV3
 		}
 	}
-}
+];
 
 export type GetMenusResponseFlattened = GetMenusResponse[0]['data']['menusV3'];
 

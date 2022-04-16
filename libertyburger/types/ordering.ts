@@ -1,12 +1,14 @@
 export type Modifier = {
-	itemGuid: string,
 	itemGroupGuid: string,
-	quantity: number,
-	modifierGroups: {
-		[index: number]: {
-			guid: string,
-			modifiers: []
-		}
+	itemGuid: string,
+	modifierGroups: any[],
+	quantity: number
+};
+
+export type ModifierGroup = {
+	guid: string,
+	modifiers: {
+		[index: number]: Modifier
 	}
 };
 
@@ -14,12 +16,7 @@ export type CartSelection = {
 	itemGuid: string,
 	itemGroupGuid: string,
 	quantity: number,
-	modifierGroups: {
-		[index: number]: {
-			guid: string,
-			modifiers: Modifier[] | undefined
-		}
-	},
+	modifierGroups: ModifierGroup[],
 	specialInstructions: string,
 	itemMasterId: string
 };
@@ -39,8 +36,8 @@ export type AddItemResponse = {
 					order: {
 						deliveryInfo: null,
 						numberOfSelections: number,
-						selections: {
-							[index: number]: {
+						selections: [
+							{
 								guid: string,
 								groupingKey: string,
 								itemGuid: string,
@@ -67,7 +64,7 @@ export type AddItemResponse = {
 								},
 								__typename: string
 							}
-						},
+						],
 						discounts: {
 							restaurantDiscount: null,
 							loyaltyDiscount: null,
@@ -134,7 +131,35 @@ export type DeleteItemFromCartResponse = {
 					order: {
 						deliveryInfo: null,
 						numberOfSelections: number,
-						selections: any[],
+						selections: [
+							{
+								guid: string,
+								groupingKey: string,
+								itemGuid: string,
+								itemGroupGuid: string,
+								name: string,
+								preDiscountPrice: number,
+								price: number,
+								quantity: number,
+								usesFractionalQuantity: boolean,
+								fractionalQuantity: {
+									unitOfMeasure: string,
+									quantity: number,
+									__typename: string
+								},
+								modifiers: {
+									[index: number]: {
+										guid: null,
+										name: string,
+										price: number,
+										groupingKey: string,
+										modifiers: Modifier[],
+										__typename: string
+									}
+								},
+								__typename: string
+							}
+						],
 						discounts: {
 							restaurantDiscount: null,
 							loyaltyDiscount: null,
@@ -200,8 +225,8 @@ export type GetCartResponse = {
 					order: {
 						deliveryInfo: null,
 						numberOfSelections: number,
-						selections: {
-							[index: number]: {
+						selections: [
+							{
 								guid: string,
 								groupingKey: string,
 								itemGuid: string,
@@ -227,8 +252,8 @@ export type GetCartResponse = {
 									}
 								},
 								__typename: string
-							},
-						},
+							}
+						],
 						discounts: {
 							restaurantDiscount: null,
 							loyaltyDiscount: null,
