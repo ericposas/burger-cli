@@ -40,7 +40,7 @@ const getPinkModifier = (): ModifierGroup[] => {
 	];
 };
 
-const getMayoModifier = (): ModifierGroup[] => {
+const getMayoAndAmericanModifier = (): ModifierGroup[] => {
 	return [
 		{
 			guid: "f9f30ded-47ca-49fb-a3f7-1caa88753212",
@@ -55,7 +55,29 @@ const getMayoModifier = (): ModifierGroup[] => {
 		},
 		{
 			guid: "ddc75c11-beb2-41c3-a895-5c6f70a573db",
-			modifiers: []
+			modifiers: [
+				// American
+				{
+					itemGroupGuid: "ccefc41e-76f5-42a1-ab7d-58190ece0d83",
+					itemGuid: "6d2e52f3-ab98-46c6-b062-1e94e91259cd",
+					modifierGroups: [],
+					quantity: 1
+				},
+				// Cheddar
+				// {
+				// 	itemGroupGuid: "ccefc41e-76f5-42a1-ab7d-58190ece0d83",
+				// 	itemGuid: "95cfe232-0e4b-4712-bf11-de3949e2aa81",
+				// 	modifierGroups: [],
+				// 	quantity: 1
+				// },
+				// Queso Blanco
+				// {
+				// 	itemGroupGuid: "ccefc41e-76f5-42a1-ab7d-58190ece0d83",
+				// 	itemGuid: "a38acfbf-edb0-4b2f-92d4-1cef60c0bf13",
+				// 	modifierGroups: [],
+				// 	quantity: 1
+				// }
+			]
 		},
 		{
 			guid: "ef1500de-0d99-414a-b2d0-da86c7af7032",
@@ -72,7 +94,7 @@ const getMayoModifier = (): ModifierGroup[] => {
 	]
 }
 
-type ItemInfo = { name: string; price: number, outOfStock: boolean, image: string };
+type ItemInfo = { name: string; price: number, outOfStock: boolean, image: string, description: string };
 const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] => {
 	return items.map((item, idx) => {
 		// returns an array of [index (choice #), ItemInfo, CartSelection] tuples
@@ -83,6 +105,7 @@ const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] 
 				price: item.price,
 				outOfStock: item.outOfStock,
 				image: item.imageUrl,
+				description: item.description
 			},
 			<CartSelection>{
 				itemGuid: item.guid,
@@ -94,7 +117,7 @@ const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] 
 						modifiers = modifiers.concat(getPinkModifier());
 					}
 					if (item.name === 'The Liberty Burger') { // <-- if item is the Liberty Burger, needs the condiment choice
-						modifiers = modifiers.concat(getMayoModifier());
+						modifiers = modifiers.concat(getMayoAndAmericanModifier());
 					}
 					return modifiers;
 				})(),
@@ -168,7 +191,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 	// [3] Kid Chicken Bites
 
 	// 
-	
+
 	// console.log(
 	// 	mapToCartSelection(
 	// 		await api().getMenuOf('sandwiches')
@@ -180,7 +203,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 		process.exit(0);
 	});
 
-	const restaurant = await api().getRestaurantData(restaurantGuid);	
+	const restaurant = await api().getRestaurantData(restaurantGuid);
 	// check restaurant availability before proceeding
 	const isAvail: string | boolean = await api().getAvailability(restaurantGuid);
 	// console.log(isAvail);
@@ -193,29 +216,35 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 	const burgerMenu = await api().getMenuOf('burgers');
 	const items = mapToCartSelection(burgerMenu);
 	items.forEach(item => {
-		if (!item[1].outOfStock) {
+		if (!item[1].outOfStock && item[1].name !== 'Ahi' && item[1].name !== 'The Libertine' && item[1].name !== 'Woodstock') {
 			console.log(
-				`#${item[0]}`,
-				item[1].name,
-				`$${item[1].price}`
+				`#${item[0]}: `,
+				`${item[1].name}, `,
+				`price: $${item[1].price}`,
 			);
+			console.log(`${item[1].description}\n`);
 		}
 	});
-	
+
 	let cartGuid: string; // keep cartGuid in memory by assigning here after first item is added
 
-	rl.question(`What would you like to order from ${restaurant.whiteLabelName}?\n`, async (input: number) => {
-		console.log(`\nYou selected item ${input.toString()}, ${items[input][1].name}, price: $${items[input][1].price}\n`);
-		const add: AddItemResponseFlattened = await api().addItemToCart(restaurantGuid, items[input][2]); // this first item will create a cartGuid that we can reference in the next item add operation
-		if (add.cart) {
-			cartGuid = add.cart.guid;
-			console.log('cart guid: ', cartGuid);
-			viewCart(cartGuid);
-		} else {
-			console.error('Something went wrong, no cart guid -- must have been a misconfigured selection or modifier');
-			console.error(add);
-		}
-	});
+	orderStart();
+
+	async function orderStart() {
+		rl.question(`What would you like to order from ${restaurant.whiteLabelName}?\n`, async (input: number) => {
+			console.log(`\nYou selected item ${input.toString()}, ${items[input][1].name}, price: $${items[input][1].price}\n`);
+			const add: AddItemResponseFlattened = await api().addItemToCart(restaurantGuid, items[input][2]); // this first item will create a cartGuid that we can reference in the next item add operation
+			if (add.cart) {
+				cartGuid = add.cart.guid;
+				console.log('cart guid: ', cartGuid);
+				viewCart(cartGuid);
+			} else {
+				console.error('Something went wrong, no cart guid -- must have been a misconfigured selection or modifier');
+				console.error(add);
+				orderStart();
+			}
+		});
+	}
 
 	async function viewCart(cartGuid: string) {
 		const cart: GetCartResponseFlattened = await api().getCart(cartGuid);
@@ -285,16 +314,16 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 				}
 			);
 			console.log('Order successfully placed!');
-			
+
 			// start doordash order process..
 			console.log('Creating DoorDash delivery...');
 			const createdDelivery: CreateDeliveryResponse = await ddApi().createDelivery(placedOrder.completedOrder.guid, restaurantGuid); // "cc320a08-dfaf-43ab-8b53-ece2d36f03ae", restaurantGuid);
-			console.log('Delivery created!', `fee: ${createdDelivery.fee},`, `order value: ${createdDelivery.order_value},`, `est. drop off time: ${moment(createdDelivery.dropoff_time_estimated).toDate()}\n` );
-			
+			console.log('Delivery created!', `fee: ${createdDelivery.fee},`, `order value: ${createdDelivery.order_value},`, `est. drop off time: ${moment(createdDelivery.dropoff_time_estimated).toDate()}\n`);
+
 			let status: DeliveryStatusResponse = await ddApi().getDeliveryStatus(createdDelivery.external_delivery_id)
-			
+
 			setInterval(checkDeliveryStatus, 15000); // poll every 15 sec. for status updates
-			
+
 			async function checkDeliveryStatus() {
 				console.log('Getting status update...');
 				status = await ddApi().getDeliveryStatus(createdDelivery.external_delivery_id)
@@ -335,9 +364,9 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 	// console.log(
 	// 	cart.cart.order.selections
 	// );
-	
+
 	// Steps:
-	
+
 	// 1 Add items to cart
 
 	// 2 Validate cart
@@ -345,7 +374,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 	// console.log(validate.cart);
 
 	// 3 Place order with Card
-	
+
 	// 4 Check order success data
 	// get the completed order deets..
 	// const orderGuidString = "cc320a08-dfaf-43ab-8b53-ece2d36f03ae";
