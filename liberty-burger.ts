@@ -94,6 +94,20 @@ const getMayoAndAmericanModifier = (): ModifierGroup[] => {
 	]
 }
 
+const getDietCoke = (): ModifierGroup[] => ([
+	{
+		guid: "74ed4d9b-6621-4b82-8b5b-62f9cb7e8c4d",
+		modifiers: [
+			{
+				itemGroupGuid: "cd9a4980-281f-43b6-94f1-82037384081b",
+				itemGuid: "2bd8d846-0ba8-4f79-8356-0cc65d21963b",
+				modifierGroups: [],
+				quantity: 1
+			}
+		]
+	}
+]);
+
 type ItemInfo = { name: string; price: number, outOfStock: boolean, image: string, description: string };
 const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] => {
 	return items.map((item, idx) => {
@@ -118,6 +132,10 @@ const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] 
 					}
 					if (item.name === 'The Liberty Burger') { // <-- if item is the Liberty Burger, needs the condiment choice
 						modifiers = modifiers.concat(getMayoAndAmericanModifier());
+					}
+					// if soda
+					if (item.guid === "74ed4d9b-6621-4b82-8b5b-62f9cb7e8c4d") {
+						modifiers = modifiers.concat(getDietCoke());
 					}
 					return modifiers;
 				})(),
@@ -149,55 +167,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 
 // main
 (async () => {
-
-	// Burger options
-	// [0] Liberty
-	// [1] Napa
-	// [2] Chillerno
-	// [3] Baby Bella
-	// [4] South of the Burger
-	// [5] Wild West
-	// [6] The Nooner
-	// [7] Ahi
-	// [8] The Libertine
-	// [9] Woodstock
-	// [10] Jackie O
-	// [11] Candied Cowboy
-
-	// Sandwich options
-	// [0] Grilled Cheese
-	// [1] The Traitor
-
-	// Salad options 
-	// [0] Crunchy
-	// [1] Kale Mary
-	// [2] Sturdy
-	// [3] Simple Salad
-
-	// Sides
-	// [0] Skinny Fry
-	// [1] Sweet Potato Fry
-	// [2] Big O Rings
-	// [3] Single O Ring
-	// [4] The Torch (Jalapeno Poppers)
-	// [5] Sidewinders (loaded fries)
-	// [6] Plain Sidewinders
-	// [7] Simple Salad
-
-	// Kids Menu
-	// [0] Kid Burger
-	// [1] Kid Chicken Sandwich
-	// [2] Kid Grilled Cheese
-	// [3] Kid Chicken Bites
-
-	// 
-
-	// console.log(
-	// 	mapToCartSelection(
-	// 		await api().getMenuOf('sandwiches')
-	// 	)
-	// );
-
+	
 	rl.on('close', function () {
 		console.log('\nBYE BYE !!!');
 		process.exit(0);
@@ -206,24 +176,38 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 	const restaurant = await api().getRestaurantData(restaurantGuid);
 	// check restaurant availability before proceeding
 	const isAvail: string | boolean = await api().getAvailability(restaurantGuid);
-	// console.log(isAvail);
-
+	
 	if (typeof isAvail === 'boolean' && isAvail === false) {
 		console.log(`Sorry, ${restaurant.whiteLabelName} is not open for orders right now.`);
 		process.exit();
 	}
 
-	const burgerMenu = await api().getMenuOf('burgers');
-	const items = mapToCartSelection(burgerMenu);
-	items.forEach(item => {
-		if (!item[1].outOfStock && item[1].name !== 'Ahi' && item[1].name !== 'The Libertine' && item[1].name !== 'Woodstock') {
-			console.log(
-				`#${item[0]}: `,
-				`${item[1].name}, `,
-				`price: $${item[1].price}`,
-			);
-			console.log(`${item[1].description}\n`);
-		}
+	let items = mapToCartSelection(await api().getMenuOf('burgers'))
+		.concat(
+			mapToCartSelection(await api().getMenuOf('sides'))
+		)
+		.concat(
+			mapToCartSelection(await api().getMenuOf('off menu'))
+		)
+		.concat(
+			mapToCartSelection(await api().getMenuOf('beverages'))
+		)
+		.concat(
+			mapToCartSelection(await api().getMenuOf('sauces'))
+		);
+	
+	const itemsMapped: [number, ItemInfo, CartSelection][] = [];
+	items = items.filter((item) => {
+		return !item[1].outOfStock && item[1].name !== 'Ahi' && item[1].name !== 'The Libertine' && item[1].name !== 'Woodstock'
+	});
+	items.forEach((item, idx) => {
+		console.log(
+			`#${idx}: `,
+			`${item[1].name}, `,
+			`price: $${item[1].price}`,
+		);
+		console.log(`${item[1].description}\n`);
+		itemsMapped.push(item);
 	});
 
 	let cartGuid: string; // keep cartGuid in memory by assigning here after first item is added
@@ -232,8 +216,8 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 
 	async function orderStart() {
 		rl.question(`What would you like to order from ${restaurant.whiteLabelName}?\n`, async (input: number) => {
-			console.log(`\nYou selected item ${input.toString()}, ${items[input][1].name}, price: $${items[input][1].price}\n`);
-			const add: AddItemResponseFlattened = await api().addItemToCart(restaurantGuid, items[input][2]); // this first item will create a cartGuid that we can reference in the next item add operation
+			console.log(`\nYou selected item ${input.toString()}, ${itemsMapped[input][1].name}, price: $${itemsMapped[input][1].price}\n`);
+			const add: AddItemResponseFlattened = await api().addItemToCart(restaurantGuid, itemsMapped[input][2]); // this first item will create a cartGuid that we can reference in the next item add operation
 			if (add.cart) {
 				cartGuid = add.cart.guid;
 				console.log('cart guid: ', cartGuid);
@@ -268,14 +252,14 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 
 	async function addAnotherItem() {
 		rl.question(`What else would you like to order from ${restaurant.whiteLabelName}?\n`, async (input: number) => {
-			console.log(`\nYou selected item ${input.toString()}, ${items[input][1].name}, price: $${items[input][1].price}\n`);
-			await api().addItemToCart(restaurantGuid, items[input][2], cartGuid); // reference already created cart
+			console.log(`\nYou selected item ${input.toString()}, ${itemsMapped[input][1].name}, price: $${itemsMapped[input][1].price}\n`);
+			await api().addItemToCart(restaurantGuid, itemsMapped[input][2], cartGuid); // reference already created cart
 			viewCart(cartGuid);
 		});
 	}
 
 	async function shouldWeCheckout() {
-		rl.question(`Do you want to checkout?\n`, async (input: string) => {
+		rl.question(`Do you want to checkout? y/n \n`, async (input: string) => {
 			if (input === 'y') {
 				proceedToCheckout(cartGuid);
 			} else {
