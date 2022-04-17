@@ -2,8 +2,10 @@ require('dotenv').config();
 
 import moment from 'moment';
 import api from './libertyburger/api';
-import { DiningOptionsResponse, Item, MenuOf, MenusV3, RestaurantDataResponse } from './libertyburger/types/menu';
-import { AddItemResponse, AddItemResponseFlattened, CartSelection, CompletedOrderResponse, CompletedOrderResponseFlattened, GetCartResponse, GetCartResponseFlattened, ModifierGroup, PlaceCCOrderResponseFlattened, ValidateCartResponse, ValidateCartResponseFlattened } from './libertyburger/types/ordering';
+import ddApi from './doordash/api';
+import { Item, MenusV3 } from './libertyburger/types/menu';
+import { AddItemResponseFlattened, CartSelection, GetCartResponseFlattened, ModifierGroup, PlaceCCOrderResponseFlattened, ValidateCartResponseFlattened } from './libertyburger/types/ordering';
+import { CreateDeliveryResponse, DeliveryStatusResponse } from './doordash/types';
 
 const readline = require('readline');
 const rl = readline.createInterface({
@@ -70,7 +72,7 @@ const getMayoModifier = (): ModifierGroup[] => {
 	]
 }
 
-type ItemInfo = { name: string; price: number, stock: boolean, image: string };
+type ItemInfo = { name: string; price: number, outOfStock: boolean, image: string };
 const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] => {
 	return items.map((item, idx) => {
 		// returns an array of [index (choice #), ItemInfo, CartSelection] tuples
@@ -79,7 +81,7 @@ const mapToCartSelection = (items: Item[]): [number, ItemInfo, CartSelection][] 
 			<ItemInfo>{
 				name: item.name,
 				price: item.price,
-				stock: item.outOfStock,
+				outOfStock: item.outOfStock,
 				image: item.imageUrl,
 			},
 			<CartSelection>{
@@ -191,11 +193,13 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 	const burgerMenu = await api().getMenuOf('burgers');
 	const items = mapToCartSelection(burgerMenu);
 	items.forEach(item => {
-		console.log(
-			`#${item[0]}`,
-			item[1].name,
-			`$${item[1].price}`
-		);
+		if (!item[1].outOfStock) {
+			console.log(
+				`#${item[0]}`,
+				item[1].name,
+				`$${item[1].price}`
+			);
+		}
 	});
 	
 	let cartGuid: string; // keep cartGuid in memory by assigning here after first item is added
@@ -260,7 +264,7 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 			const validate: ValidateCartResponseFlattened = await api().validateCart(cart.cart.guid);
 			// place order here 
 			console.log('placing order...');
-			const placeOrder: PlaceCCOrderResponseFlattened = await api().placeCCOrder(
+			const placedOrder: PlaceCCOrderResponseFlattened = await api().placeCCOrder(
 				validate.cart.guid,
 				1.99,
 				{
@@ -280,15 +284,27 @@ const allItemsAsCartReadySelections = async (_restGuid: string, _shortUrl: strin
 					zipCode: `${process.env.zipCode}`
 				}
 			);
-			// cardFirst6
-			// cardLast4
-			// encryptedCardDataString
-			// encryptionKeyId
-			// expMonth
-			// expYear
-			// saveCard
-			// zipCode
-			console.log('Order successfully placed!', placeOrder.completedOrder);
+			console.log('Order successfully placed!');
+			
+			// start doordash order process..
+			console.log('Creating DoorDash delivery...');
+			const createdDelivery: CreateDeliveryResponse = await ddApi().createDelivery(placedOrder.completedOrder.guid, restaurantGuid); // "cc320a08-dfaf-43ab-8b53-ece2d36f03ae", restaurantGuid);
+			console.log('Delivery created!', `fee: ${createdDelivery.fee},`, `order value: ${createdDelivery.order_value},`, `est. drop off time: ${moment(createdDelivery.dropoff_time_estimated).toDate()}\n` );
+			
+			let status: DeliveryStatusResponse = await ddApi().getDeliveryStatus(createdDelivery.external_delivery_id)
+			
+			setInterval(checkDeliveryStatus, 15000); // poll every 15 sec. for status updates
+			
+			async function checkDeliveryStatus() {
+				console.log('Getting status update...');
+				status = await ddApi().getDeliveryStatus(createdDelivery.external_delivery_id)
+				if (status && status.delivery_status !== 'delivered') {
+					console.log(`status: ${status.delivery_status},`, `est. drop off time: ${moment(status.dropoff_time_estimated).toDate()},`, `tracking: ${status.tracking_url}\n`);
+				} else {
+					console.log('Your food has been delivered, Enjoy!');
+					process.exit(0);
+				}
+			}
 		} catch (err) {
 			console.error(err);
 		}

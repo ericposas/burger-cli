@@ -2,6 +2,7 @@ import DDApi from './doordash/api';
 
 const command = process.argv[2];
 const arg2 = process.argv[3];
+const arg3 = process.argv[4];
 
 // main
 (async () => {
@@ -10,16 +11,16 @@ const arg2 = process.argv[3];
 	if (command) {
 
         if (arg2 && typeof arg2 === 'string') {
-            if (command === 'quote') {
-                const result = await DDApi().getDeliveryQuote(arg2);
+            if (command === 'quote' && arg3 && typeof arg3 === 'string') {
+                const result = await DDApi().getDeliveryQuote(arg2, arg3);
                 console.log('quoted fee: ', result);
             }
             if (command === 'status') {
                 const result = await DDApi().getDeliveryStatus(arg2);
                 console.log(result);
             }
-            if (command === 'create') {
-                const result = await DDApi().createDelivery(arg2);
+            if (command === 'create' && arg3 && typeof arg3 === 'string') {
+                const result = await DDApi().createDelivery(arg2, arg3);
                 console.log(result);
             }
         } else {

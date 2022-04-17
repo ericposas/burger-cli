@@ -5,7 +5,7 @@ import { AxiosResponse } from "axios";
 const { v4: uuidv4 } = require('uuid');
 const { getJWT } = require('../get-jwt');
 import libBurgApi from "../libertyburger/api";
-import { CompletedOrderResponse } from '../libertyburger/types/ordering';
+import { CompletedOrderResponse, CompletedOrderResponseFlattened } from '../libertyburger/types/ordering';
 import { CreateDeliveryBody, CreateDeliveryResponse, DeliveryQuoteBody, DeliveryQuoteResponse, DeliveryStatusResponse } from '../doordash/types';
 
 const getHeaders = () => ({
@@ -27,22 +27,19 @@ const convertOrderValue = (total: number) => {
 
 export default () => ({
     
-    getDeliveryQuote: async (liberty_burger_completed_order_id: string): Promise<number> => {
+    getDeliveryQuote: async (liberty_burger_completed_order_id: string, restaurantGuid: string): Promise<number> => {
         try {
             // get completed order data from Liberty
-            const completedOrder: CompletedOrderResponse = await libBurgApi().getCompletedOrderInfo(liberty_burger_completed_order_id, `${process.env.restaurantGuid}`);
-            console.log(
-                completedOrder
-            );
+            const completedOrder: CompletedOrderResponseFlattened = await libBurgApi().getCompletedOrderInfo(liberty_burger_completed_order_id, restaurantGuid);
             // package it in the format DD expects
             const body = JSON.stringify(<DeliveryQuoteBody>{
                 external_delivery_id: uuidv4(),
                 locale: "en-US",
-                pickup_address: completedOrder[0].data.completedOrder.restaurant.location.address1,
-                pickup_business_name: completedOrder[0].data.completedOrder.restaurant.name,
-                pickup_phone_number: completedOrder[0].data.completedOrder.restaurant.location.phone,
-                pickup_instructions: completedOrder[0].data.completedOrder.guestCommunication,
-                pickup_reference_tag: completedOrder[0].data.completedOrder.checkNumber,
+                pickup_address: completedOrder.restaurant.location.address1,
+                pickup_business_name: completedOrder.restaurant.name,
+                pickup_phone_number: completedOrder.restaurant.location.phone,
+                pickup_instructions: completedOrder.guestCommunication,
+                pickup_reference_tag: completedOrder.checkNumber,
                 dropoff_address: `${process.env.dropoff_address}`,
                 dropoff_business_name: `${process.env.dropoff_business_name}`,
                 dropoff_phone_number: `${process.env.phone}`,
@@ -50,19 +47,19 @@ export default () => ({
                 dropoff_contact_given_name: `${process.env.firstName}`,
                 dropoff_contact_family_name: `${process.env.lastName}`,
                 dropoff_contact_send_notifications: true,
-                order_value: convertOrderValue(completedOrder[0].data.completedOrder.total),
+                order_value: convertOrderValue(completedOrder.total),
                 currency: "USD",
                 contactless_dropoff: false,
                 tip: 499,
-                pickup_time: moment(completedOrder[0].data.completedOrder.estimatedFulfillmentDate).add(15, 'm').toDate(),
-                dropoff_time: moment(completedOrder[0].data.completedOrder.estimatedFulfillmentDate).add(45, 'm').toDate(),
+                pickup_time: moment(completedOrder.estimatedFulfillmentDate).toDate(),
+                dropoff_time: moment(completedOrder.estimatedFulfillmentDate).add(45, 'm').toDate(),
                 pickup_window: {
-                    start_time: moment(completedOrder[0].data.completedOrder.estimatedFulfillmentDate).toDate(),
-                    end_time: moment(completedOrder[0].data.completedOrder.estimatedFulfillmentDate).add(20, 'm').toDate()
+                    start_time: moment(completedOrder.estimatedFulfillmentDate).toDate(),
+                    end_time: moment(completedOrder.estimatedFulfillmentDate).add(20, 'm').toDate()
                 },
                 dropoff_window: {
-                    start_time: moment(completedOrder[0].data.completedOrder.estimatedFulfillmentDate).add(30, 'm'),
-                    end_time: moment(completedOrder[0].data.completedOrder.estimatedFulfillmentDate).add(60, 'm')
+                    start_time: moment(completedOrder.estimatedFulfillmentDate).add(30, 'm'),
+                    end_time: moment(completedOrder.estimatedFulfillmentDate).add(60, 'm')
                 }
             });
             // get a quote from DD on delivery
@@ -75,26 +72,23 @@ export default () => ({
         }
     },
     
-    createDelivery: async (liberty_burger_completed_order_id: string): Promise<CreateDeliveryResponse> => {
+    createDelivery: async (liberty_burger_completed_order_id: string, restaurantGuid: string): Promise<CreateDeliveryResponse> => {
         try {
             // get completed order data from Liberty
-            const completedOrder: CompletedOrderResponse = await libBurgApi().getCompletedOrderInfo(liberty_burger_completed_order_id, `${process.env.restaurantGuid}`);
-            console.log(
-                completedOrder
-            );
+            const completedOrder: CompletedOrderResponseFlattened = await libBurgApi().getCompletedOrderInfo(liberty_burger_completed_order_id, restaurantGuid);
             // prepare body to send to DD
             const endpoint = 'https://openapi.doordash.com/drive/v2/deliveries';
             const body = JSON.stringify(<CreateDeliveryBody>{
                 external_delivery_id: uuidv4(),
-                pickup_address: completedOrder[0].data.completedOrder.restaurant.location.address1,
-                pickup_business_name: completedOrder[0].data.completedOrder.restaurant.name,
-                pickup_phone_number: completedOrder[0].data.completedOrder.restaurant.location.phone,
-                pickup_instructions: completedOrder[0].data.completedOrder.guestCommunication,
-                dropoff_address: process.env.doordash_address,
+                pickup_address: completedOrder.restaurant.location.address1,
+                pickup_business_name: completedOrder.restaurant.name,
+                pickup_phone_number: completedOrder.restaurant.location.phone,
+                pickup_instructions: completedOrder.guestCommunication,
+                dropoff_address: `${process.env.doordash_address}`,
                 dropoff_business_name: `${process.env.dropoff_business_name}`,
                 dropoff_phone_number: `+1${process.env.phone}`,
                 dropoff_instructions: `${process.env.dropoff_instructions}`,
-                order_value: convertOrderValue(completedOrder[0].data.completedOrder.total)
+                order_value: convertOrderValue(completedOrder.total)
             });
             // send body to DD create delivery endpoint 
             const result: AxiosResponse<CreateDeliveryResponse> = await axios.post(endpoint, body, getHeaders());
